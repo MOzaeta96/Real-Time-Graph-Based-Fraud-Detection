@@ -12,6 +12,7 @@ Batch container for model training
 FastAPI Inference Service
 
 Example Architecture:
+```
                         ┌─────────────────────┐
                         │   Event Generator   │
                         └──────────┬──────────┘
@@ -45,9 +46,9 @@ Example Architecture:
                         ┌─────────────────────┐
                         │     FastAPI API     │
                         └─────────────────────┘
-
+```
 Example Repository Structure:
-
+```
 fraud-detection-platform/
 │
 ├── README.md
@@ -102,3 +103,4 @@ fraud-detection-platform/
     ├── 01_data_simulation.ipynb
     ├── 02_eda.ipynb
     └── 03_model_experiments.ipynb
+```
