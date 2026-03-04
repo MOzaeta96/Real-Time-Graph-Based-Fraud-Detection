@@ -105,3 +105,45 @@ fraud-detection-platform/
     ├── 02_eda.ipynb
     └── 03_model_experiments.ipynb
 ```
+
+
+
+Current Repo:
+```
+Real-Time-Graph-Based-Fraud-Detection
+│
+├── compose.yaml
+│
+├── data/
+│   ├── transactions.parquet
+│   ├── metadata.json
+│   └── qa_report.json
+│
+├── event-generator/
+│   └── generator.py
+│
+├── ingestion/
+│   └── load_to_postgres.py
+│
+├── feature-store/
+│   └── schema.sql
+│
+├── feature-publisher/
+│   └── publish_latest_to_redis.py
+│
+├── inference-api/
+│   └── main.py
+│
+├── model-training/
+│   ├── train_lgbm.py
+│   └── artifacts/
+│
+├── loadtest/
+│   └── load_test.py
+│
+├── monitoring/
+│   └── validate_dataset.py
+│
+└── notebooks/
+    └── synthetic_data_generator.py
+```
