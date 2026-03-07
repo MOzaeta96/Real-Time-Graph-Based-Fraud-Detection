@@ -1,0 +1,245 @@
+services:
+  event-generator:
+    build: ./event-generator
+    environment:
+      SEED: '42'
+      NUM_USERS: '100000'
+      NUM_MERCHANTS: '10000'
+      NUM_DEVICES: '200000'
+      NUM_TRANSACTIONS: '1000000'
+      FRAUD_RATE: '0.05'
+      START_DATE: '2025-01-01'
+      WINDOW_DAYS: '30'
+      OUTPUT_FORMAT: parquet
+      OUTPUT_DIR: /data
+      OUTPUT_BASENAME: transactions
+    volumes:
+      - ./data:/data
+
+  postgres:
+    image: postgres:15
+    container_name: fraud-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: fraud
+      POSTGRES_PASSWORD: fraud
+      POSTGRES_DB: fraud
+    ports:
+      - 5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./feature-store/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fraud -d fraud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7
+    container_name: fraud-redis
+    restart: always
+    volumes:
+      - redisdata:/data
+
+  ingest-to-postgres:
+    build: ./ingestion
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATA_PATH: /data/transactions.parquet
+      CHUNK_SIZE: '50000'
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: fraud
+      PGUSER: fraud
+      PGPASSWORD: fraud
+    volumes:
+      - ./data:/data
+
+  publish-latest-features:
+    build: ./feature-publisher
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: fraud
+      PGUSER: fraud
+      PGPASSWORD: fraud
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      KEY_PREFIX: user
+      BATCH_SIZE: '5000'
+
+  inference-api:
+    build: ./inference-api
+    depends_on:
+      - redis
+    environment:
+      ACTIVE_MODEL: auto
+      CHAMPION_PCT: '90'
+      BASE_MODELS_DIR: /models
+      REDIS_HOST: redis
+      REDIS_PORT: '6379'
+      REDIS_DB: '0'
+      KEY_PREFIX: user
+      MODEL_VERSION: lgbm_nextday_v2
+      SHADOW_EVAL: '1'
+      SHADOW_STREAM: shadow_events
+      SHADOW_STREAM_MAXLEN: '200000'
+    volumes:
+      - ./model-training/artifacts:/models/champion
+      - ./model-training/artifacts_challenger:/models/challenger:ro
+    ports:
+      - 8000:8000
+
+  drift-detector:
+    build: ./monitoring
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: fraud
+      PGUSER: fraud
+      PGPASSWORD: fraud
+      BASELINE_PATH: /models/champion/baseline_hist.json
+      DRIFT_WINDOW_DAYS: '3'
+      DRIFT_INTERVAL_SEC: '300'
+      PSI_WARN: '0.10'
+      PSI_ALERT: '0.20'
+      METRICS_PORT: '8000'
+    volumes:
+      - ./model-training/artifacts:/models/champion:ro
+
+  model-training:
+    build:
+      context: .
+      dockerfile: model-training/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: '5432'
+      PGDATABASE: fraud
+      PGUSER: fraud
+      PGPASSWORD: fraud
+      ARTIFACT_DIR: /artifacts
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./model-training/artifacts:/artifacts
+
+  feature-builder:
+    image: postgres:15
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./feature-builder/build_features.sql:/work/build_features.sql:ro
+    environment:
+      PGPASSWORD: fraud
+    command:
+      ["bash","-lc","psql -v ON_ERROR_STOP=1 -h postgres -U fraud -d fraud -f /work/build_features.sql"]
+
+  retrain-controller:
+    build:
+      context: .
+      dockerfile: retrain-controller/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: "5432"
+      PGDATABASE: fraud
+      PGUSER: fraud
+      PGPASSWORD: fraud
+      RETRAIN_INTERVAL_SEC: "86400"
+      RUNS_DIR: /runs
+      CHALLENGER_DIR: /challenger
+      MIN_TRAIN_ROWS: "50000"
+      MODEL_VERSION_PREFIX: "lgbm_nextday"
+      RECALL_TARGET: "0.95"
+      PRECISION_TARGET: "0.20"
+      DRIFT_BINS: "10"
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      - ./model-training/runs:/runs
+      - ./model-training/artifacts_challenger:/challenger
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.62.0
+    container_name: fraud-redis-exporter
+    restart: always
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      - redis
+    ports:
+      - 9121:9121
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: fraud-postgres-exporter
+    restart: always
+    environment:
+      DATA_SOURCE_NAME: postgresql://fraud:fraud@postgres:5432/fraud?sslmode=disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - 9187:9187
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: fraud-prometheus
+    restart: always
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
+    depends_on:
+      - inference-api
+      - redis-exporter
+      - postgres-exporter
+      - drift-detector
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: fraud-grafana
+    restart: always
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+    ports:
+      - 3000:3000
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+      
+  prediction-monitor:
+    build: ./monitoring/prediction-monitor
+    depends_on:
+    - redis
+    environment:
+      REDIS_HOST: redis
+    ports:
+      - "9103:9103"
+
+volumes:
+  pgdata: null
+  redisdata: null
+  grafana-data: {}
