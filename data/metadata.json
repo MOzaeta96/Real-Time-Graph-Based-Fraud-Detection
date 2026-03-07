@@ -1,0 +1,26 @@
+{
+  "output_path": "/data/transactions.parquet",
+  "output_format": "parquet",
+  "seed": 42,
+  "num_users": 100000,
+  "num_merchants": 10000,
+  "num_devices": 200000,
+  "num_transactions": 1000000,
+  "fraud_rate_config": 0.05,
+  "fraud_positive_rate_actual": 0.05001,
+  "start_date": "2025-01-01",
+  "window_days": 30,
+  "generated_at_utc": "2026-03-05T19:53:19.668538+00:00",
+  "fraud_mechanisms": {
+    "target_fraud_rate": 0.05,
+    "risky_merchant_pct": 0.01,
+    "compromised_device_pct": 0.005,
+    "high_risk_user_pct": 0.02,
+    "merchant_risk_mult": 6.0,
+    "device_risk_mult": 10.0,
+    "user_risk_mult": 3.0,
+    "amount_spike_mult": 3.0,
+    "spike_ratio": 5.0,
+    "contagion_mult": 1.5
+  }
+}
