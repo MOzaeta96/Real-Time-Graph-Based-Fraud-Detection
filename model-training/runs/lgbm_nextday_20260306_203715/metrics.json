@@ -1,0 +1,54 @@
+{
+  "generated_at_utc": "2026-03-06T20:37:29.370021+00:00",
+  "train_start_date": null,
+  "train_end_date": null,
+  "model_type": "lightgbm_lgbmclassifier",
+  "model_version": "lgbm_nextday_20260306_203715",
+  "rows_total": 850021,
+  "rows_train": 680016,
+  "rows_test": 170005,
+  "positive_rate": 0.0163737131200288,
+  "scale_pos_weight": 60.07562421411892,
+  "precision@0.5": 0.016173712127799656,
+  "recall@0.5": 0.4676724137931034,
+  "f1@0.5": 0.0312661343579276,
+  "roc_auc": 0.498604277947409,
+  "pr_auc": 0.016336918735055266,
+  "best_threshold_by_f1": {
+    "thr": 0.39702165065414663,
+    "precision": 0.016446981833476627,
+    "recall": 0.9551005747126436,
+    "f1": 0.03233711349609315
+  },
+  "threshold_by_recall_target": {
+    "recall_target": 0.95,
+    "thr": 0.39702165065414663,
+    "precision": 0.016446981833476627,
+    "recall": 0.9551005747126436,
+    "f1": 0.03233711349609315
+  },
+  "threshold_by_precision_target": {
+    "precision_target": 0.2,
+    "thr": null,
+    "precision": null,
+    "recall": null,
+    "f1": null,
+    "note": "No threshold achieves precision target on this eval set."
+  },
+  "features": [
+    "txn_count",
+    "total_amount",
+    "avg_amount",
+    "distinct_merchants",
+    "distinct_devices",
+    "had_fraud_today"
+  ],
+  "feature_importance_gain": {
+    "txn_count": 39036.94949403405,
+    "total_amount": 149858.37940976024,
+    "avg_amount": 219104.07532161474,
+    "distinct_merchants": 3251.857382953167,
+    "distinct_devices": 22.82389497756958,
+    "had_fraud_today": 65588.267855227
+  }
+}

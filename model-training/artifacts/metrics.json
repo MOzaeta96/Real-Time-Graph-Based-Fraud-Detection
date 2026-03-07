@@ -1,0 +1,66 @@
+{
+  "generated_at_utc": "2026-03-05T21:13:34.365803+00:00",
+  "train_start_date": null,
+  "train_end_date": null,
+  "model_type": "lightgbm_lgbmclassifier",
+  "model_version": "lgbm_nextday_v2",
+  "rows_total": 850021,
+  "rows_train": 680016,
+  "rows_test": 170005,
+  "positive_rate": 0.0163737131200288,
+  "scale_pos_weight": 60.07562421411892,
+  "precision@0.5": 0.020315743128498646,
+  "recall@0.5": 0.4640804597701149,
+  "f1@0.5": 0.03892738776739982,
+  "roc_auc": 0.5683309392701255,
+  "pr_auc": 0.020745222253444735,
+  "best_threshold_by_f1": {
+    "thr": 0.5858109170347332,
+    "precision": 0.025325338096453178,
+    "recall": 0.14260057471264367,
+    "f1": 0.043011917659804985
+  },
+  "threshold_by_recall_target": {
+    "recall_target": 0.95,
+    "thr": 0.2606358715562426,
+    "precision": 0.016937322302195128,
+    "recall": 0.9500718390804598,
+    "f1": 0.03328132470996804
+  },
+  "threshold_by_precision_target": {
+    "precision_target": 0.2,
+    "thr": null,
+    "precision": null,
+    "recall": null,
+    "f1": null,
+    "note": "No threshold achieves precision target on this eval set."
+  },
+  "features": [
+    "txn_count",
+    "total_amount",
+    "avg_amount",
+    "distinct_merchants",
+    "distinct_devices",
+    "had_fraud_today",
+    "user_device_degree",
+    "user_merchant_degree",
+    "avg_device_user_degree",
+    "max_device_user_degree",
+    "avg_merchant_device_degree",
+    "max_merchant_device_degree"
+  ],
+  "feature_importance_gain": {
+    "txn_count": 22215.905809879303,
+    "total_amount": 304079.1904244423,
+    "avg_amount": 295021.0143837929,
+    "distinct_merchants": 3604.270565032959,
+    "distinct_devices": 0.0,
+    "had_fraud_today": 27483.56743621826,
+    "user_device_degree": 303469.11419487,
+    "user_merchant_degree": 485699.1768426895,
+    "avg_device_user_degree": 370319.86346817017,
+    "max_device_user_degree": 140598.78958272934,
+    "avg_merchant_device_degree": 399835.30308008194,
+    "max_merchant_device_degree": 244703.4657549858
+  }
+}

@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+redis
+pydantic
+joblib
+numpy
+scikit-learn
+lightgbm
+prometheus-client

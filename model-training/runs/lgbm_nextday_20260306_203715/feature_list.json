@@ -1,0 +1,8 @@
+[
+  "txn_count",
+  "total_amount",
+  "avg_amount",
+  "distinct_merchants",
+  "distinct_devices",
+  "had_fraud_today"
+]
