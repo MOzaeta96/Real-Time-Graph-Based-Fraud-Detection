@@ -18,23 +18,21 @@ Key capabilities demonstrated:
 
 ## Architecture
 ```
-Synthetic Event Generator
-        ↓
-      Kafka
-        ↓
-kafka-ingest-consumer
-        ↓
-raw_transactions (PostgreSQL)
-        ↓
-feature-builder
-        ↓
-Redis online feature store
-        ↓
-FastAPI inference-api
-        ↓
-Prometheus / Grafana
-        ↓
-retrain-controller
+Event Generator
+      ↓
+     Kafka
+      ↓
+Kafka Consumer
+      ↓
+PostgreSQL
+      ↓
+Feature Builder
+      ↓
+Redis Feature Store
+      ↓
+Inference API
+      ↓
+Monitoring / Retraining
 ```
 The architecture separates data ingestion, feature generation, model training, and inference, mirroring real production ML systems.
 
