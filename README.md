@@ -63,41 +63,106 @@ Real-Time-Graph-Based-Fraud-Detection
 │
 ├── compose.yaml
 │
+├── common_fraud/
+|   ├── __init___.py
+|   └── training/
+|       ├── __init___.py
+│       └── lgbm_nextday_trainer.py
+|
 ├── data/
 │   ├── transactions.parquet
-│   ├── metadata.json
-│   └── qa_report.json
+│   └── metadata.json
 │
 ├── event-generator/
+|   ├── Dockerfile
+|   ├── requirements.txt
 │   └── generator.py
 │
-├── kafka-ingest-consumer/
-│   └── main.py
+├── feature-builder/
+|   ├── Dockerfile
+│   └── build_features.sql
 │
-├── ingestion/
-│   └── load_to_postgres.py
-│
+├── feature-publisher/
+|   ├── Dockerfile
+|   ├── requirements.txt
+│   └── publish_latest_to_redis.py
+|
 ├── feature-store/
 │   └── schema.sql
 │
-├── feature-publisher/
-│   └── publish_latest_to_redis.py
-│
 ├── inference-api/
+|   ├── Dockerfile
+|   ├── requirements.txt
 │   └── main.py
-│
-├── model-training/
-│   ├── train_lgbm.py
-│   └── artifacts/
+|
+├── ingestion/
+|   ├── Dockerfile
+|   ├── requirements.txt
+│   └── load_to_postgres.py
+|
+├── kafka-ingest-consumer/
+|   ├── Dockerfile
+|   ├── requirements.txt
+│   └── main.py
 │
 ├── loadtest/
 │   └── load_test.py
-│
+|
+├── model-training/
+│   ├── train_lgbm.py
+|   ├── Dockerfile
+|   ├── requirements.txt
+│   ├── artifacts/
+|   |   ├── baseline_hist.json
+|   |   ├── feature_list.json
+|   |   ├── metrics.json
+|   |   └── model.joblib
+|   |
+│   ├── artifacts_challenger/
+|   |   ├── baseline_hist.json
+|   |   ├── feature_list.json
+|   |   ├── metrics.json
+|   |   └── model.joblib
+|   |
+|   └── runs/
+|       └── lgbm_nextday_DATETIME
+|
 ├── monitoring/
-│   └── validate_dataset.py
-│
-└── notebooks/
-    └── synthetic_data_generator.py
+|   ├── Dockerfile
+|   ├── drift_detector.py
+│   ├── validate_dataset.py
+│   ├── grafana/
+|   |   ├── dashboards/
+|   |   |    └── fraud-mlops-dashboard.json
+|   |   |
+|   |   └── provisioning/
+|   |       ├── dashboards/
+|   |       |    └── fraud-mlops-dashboard.json
+|   |       |
+|   |       └── datasources/
+|   |           └── datasource.yml
+|   |
+│   └── prometheus/
+|       ├── prometheus.yml
+|       |
+|       └── data/
+|           ├── queries.active
+|           ├── chunks_head/
+|           |
+|           └── wal/
+|               └── 00000000
+|           
+|
+├── notebooks/
+|    └── synthetic_data_generator.py
+|
+├── prediction-monitor/
+|    └── prediction_monitor.py
+|
+└── retain-controller
+    ├── retrain_controller.py
+    ├── Dockerfile
+    └── requirements.txt
 ```
 
 ## Quick Start
