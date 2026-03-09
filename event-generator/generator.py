@@ -9,14 +9,16 @@ Original file is located at
 
 import os
 import uuid
+import json
+import time
 import random
 from datetime import datetime, timezone
 
 import numpy as np
 import pandas as pd
+from kafka import KafkaProducer
 
 
-# Helpers
 def env_int(name: str, default: int) -> int:
     return int(os.getenv(name, default))
 
@@ -30,11 +32,9 @@ def env_str(name: str, default: str) -> str:
 
 
 def parse_start_date(value: str) -> datetime:
-    """Accepts 'YYYY-MM-DD' or full ISO8601."""
     return datetime.fromisoformat(value)
 
 
-# Core generation
 def generate_transactions(
     n: int,
     users: list[str],
@@ -46,7 +46,6 @@ def generate_transactions(
 ) -> pd.DataFrame:
     seconds = 60 * 60 * 24 * window_days
 
-    # Vectorized ID generation
     tx_ids = [str(uuid.uuid4()) for _ in range(n)]
 
     df = pd.DataFrame(
@@ -79,7 +78,6 @@ def write_outputs(df: pd.DataFrame, output_dir: str, basename: str, fmt: str) ->
     else:
         raise ValueError("OUTPUT_FORMAT must be 'parquet' or 'csv'")
 
-    # Marker file
     marker = os.path.join(output_dir, "_SUCCESS")
     with open(marker, "w", encoding="utf-8") as f:
         f.write(out_path)
@@ -120,14 +118,53 @@ def write_metadata(
     if extra:
         payload.update(extra)
 
-    import json  # noqa: PLC0415
-
     with open(metadata_path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
 
 
+def publish_to_kafka(
+    df: pd.DataFrame,
+    bootstrap_servers: str,
+    topic: str,
+    client_id: str,
+    sleep_ms: int = 0,
+) -> int:
+    producer = KafkaProducer(
+        bootstrap_servers=bootstrap_servers,
+        client_id=client_id,
+        value_serializer=lambda v: json.dumps(v).encode("utf-8"),
+        key_serializer=lambda v: v.encode("utf-8"),
+        acks="all",
+        retries=5,
+    )
+
+    sent = 0
+
+    for row in df.itertuples(index=False):
+        event = {
+            "event_id": str(uuid.uuid4()),
+            "event_time": pd.Timestamp(row.timestamp).isoformat(),
+            "transaction_id": row.transaction_id,
+            "user_id": row.user_id,
+            "merchant_id": row.merchant_id,
+            "device_id": row.device_id,
+            "amount": float(row.amount),
+            "country": row.country,
+            "is_fraud": int(row.is_fraud),
+        }
+
+        producer.send(topic, key=event["transaction_id"], value=event)
+        sent += 1
+
+        if sleep_ms > 0:
+            time.sleep(sleep_ms / 1000.0)
+
+    producer.flush()
+    producer.close()
+    return sent
+
+
 def main() -> None:
-    # Config (env-driven)
     seed = env_int("SEED", 42)
 
     num_users = env_int("NUM_USERS", 100_000)
@@ -135,14 +172,12 @@ def main() -> None:
     num_devices = env_int("NUM_DEVICES", 200_000)
     num_transactions = env_int("NUM_TRANSACTIONS", 1_000_000)
 
-    # Target overall fraud rate (default 5%)
     fraud_rate = env_float("FRAUD_RATE", 0.05)
     TARGET_FRAUD_RATE = fraud_rate
 
-    # Mechanism knobs
-    RISKY_MERCHANT_PCT = env_float("RISKY_MERCHANT_PCT", 0.01)          # 1% merchants
-    COMPROMISED_DEVICE_PCT = env_float("COMPROMISED_DEVICE_PCT", 0.005) # 0.5% devices
-    HIGH_RISK_USER_PCT = env_float("HIGH_RISK_USER_PCT", 0.02)          # 2% users
+    RISKY_MERCHANT_PCT = env_float("RISKY_MERCHANT_PCT", 0.01)
+    COMPROMISED_DEVICE_PCT = env_float("COMPROMISED_DEVICE_PCT", 0.005)
+    HIGH_RISK_USER_PCT = env_float("HIGH_RISK_USER_PCT", 0.02)
 
     MERCHANT_RISK_MULT = env_float("MERCHANT_RISK_MULT", 6.0)
     DEVICE_RISK_MULT = env_float("DEVICE_RISK_MULT", 10.0)
@@ -150,27 +185,30 @@ def main() -> None:
 
     AMOUNT_SPIKE_MULT = env_float("AMOUNT_SPIKE_MULT", 3.0)
     SPIKE_RATIO = env_float("SPIKE_RATIO", 5.0)
-    CONTAGION_MULT = env_float("CONTAGION_MULT", 1.5)  # fraud yesterday boosts today
-    BASE_FLOOR = env_float("BASE_FLOOR", 0.0005)  # 0.05% per txn floor
+    CONTAGION_MULT = env_float("CONTAGION_MULT", 1.5)
+    BASE_FLOOR = env_float("BASE_FLOOR", 0.0005)
 
     start_date_str = env_str("START_DATE", "2025-01-01")
     window_days = env_int("WINDOW_DAYS", 30)
 
     output_dir = env_str("OUTPUT_DIR", "/data")
-    output_format = env_str("OUTPUT_FORMAT", "parquet")  # parquet|csv
+    output_format = env_str("OUTPUT_FORMAT", "parquet")
     output_basename = env_str("OUTPUT_BASENAME", "transactions")
 
-    # Reproducibility
+    output_mode = env_str("OUTPUT_MODE", "file").lower()
+    kafka_bootstrap_servers = env_str("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+    kafka_topic = env_str("KAFKA_TOPIC", "transactions.raw")
+    kafka_client_id = env_str("KAFKA_CLIENT_ID", "event-generator")
+    kafka_sleep_ms = env_int("KAFKA_SLEEP_MS", 0)
+
     np.random.seed(seed)
     random.seed(seed)
     rng = np.random.default_rng(seed)
 
-    # Entities
     users = [f"u_{i}" for i in range(num_users)]
     merchants = [f"m_{i}" for i in range(num_merchants)]
     devices = [f"d_{i}" for i in range(num_devices)]
 
-    # Generate base transactions
     start_date = parse_start_date(start_date_str)
     df = generate_transactions(
         n=num_transactions,
@@ -182,7 +220,6 @@ def main() -> None:
         rng=rng,
     )
 
-    # Fraud pattern injection
     user_id_arr = df["user_id"].to_numpy()
     merchant_id_arr = df["merchant_id"].to_numpy()
     device_id_arr = df["device_id"].to_numpy()
@@ -200,33 +237,27 @@ def main() -> None:
     d_mult = np.where(np.isin(device_id_arr, list(compromised_devices)), DEVICE_RISK_MULT, 1.0)
     u_mult = np.where(np.isin(user_id_arr, list(high_risk_users)), USER_RISK_MULT, 1.0)
 
-    # Per-user baseline (median amount); spikes become more fraud-prone
     user_baseline = df.groupby("user_id")["amount"].median()
     baseline_arr = df["user_id"].map(user_baseline).to_numpy()
     spike = amount_arr > (SPIKE_RATIO * baseline_arr)
     a_mult = np.where(spike, AMOUNT_SPIKE_MULT, 1.0)
 
-    # Combine propensities
     propensity = m_mult * d_mult * u_mult * a_mult
 
-    # Convert propensity -> probability and calibrate to target fraud rate
     p = 0.01 * propensity
     mean_p = float(np.mean(p))
     scale = TARGET_FRAUD_RATE / mean_p if mean_p > 0 else 1.0
     p = np.clip(p * scale, 0.0, 0.99)
 
-    # --- Pass 1: initial sample ---
     is_fraud_0 = (rng.random(size=len(p)) < p).astype(int)
 
-    # Build per-user per-day fraud indicator from pass 1
     tmp = df[["user_id", "timestamp"]].copy()
     tmp["date"] = pd.to_datetime(tmp["timestamp"]).dt.date
     tmp["is_fraud_0"] = is_fraud_0
 
     user_day_fraud = tmp.groupby(["user_id", "date"])["is_fraud_0"].max().reset_index()
-
-    # Create next-day contagion mapping: (user_id, date+1) -> 1
     user_day_fraud["date_next"] = (pd.to_datetime(user_day_fraud["date"]) + pd.Timedelta(days=1)).dt.date
+
     contagion_keys = set(
         zip(
             user_day_fraud.loc[user_day_fraud["is_fraud_0"] == 1, "user_id"],
@@ -234,7 +265,6 @@ def main() -> None:
         )
     )
 
-    # Apply contagion multiplier to probabilities for affected (user, day)
     df_dates = pd.to_datetime(df["timestamp"]).dt.date.to_numpy()
     contagion_mask = np.array(
         [(u, d) in contagion_keys for u, d in zip(df["user_id"].to_numpy(), df_dates)],
@@ -243,17 +273,12 @@ def main() -> None:
     p2 = p * np.where(contagion_mask, CONTAGION_MULT, 1.0)
     p2 = np.clip(p2 + BASE_FLOOR, 0.0, 0.99)
 
-    # Recalibrate to keep global fraud rate at TARGET_FRAUD_RATE
     mean_p2 = float(np.mean(p2))
     scale2 = TARGET_FRAUD_RATE / mean_p2 if mean_p2 > 0 else 1.0
     p2 = np.clip(p2 * scale2, 0.0, 0.99)
 
-    # --- Pass 2: final sample ---
     df["is_fraud"] = (rng.random(size=len(p2)) < p2).astype(int)
     fraud_positive_rate_actual = float(df["is_fraud"].mean())
-
-    # Persist outputs
-    out_path = write_outputs(df, output_dir, output_basename, output_format)
 
     extra = {
         "fraud_mechanisms": {
@@ -267,28 +292,60 @@ def main() -> None:
             "amount_spike_mult": AMOUNT_SPIKE_MULT,
             "spike_ratio": SPIKE_RATIO,
             "contagion_mult": CONTAGION_MULT,
+            "output_mode": output_mode,
         }
     }
 
-    write_metadata(
-        output_dir=output_dir,
-        out_path=out_path,
-        seed=seed,
-        num_users=num_users,
-        num_merchants=num_merchants,
-        num_devices=num_devices,
-        num_transactions=num_transactions,
-        fraud_rate=fraud_rate,
-        start_date=start_date_str,
-        window_days=window_days,
-        fmt=output_format,
-        fraud_positive_rate_actual=fraud_positive_rate_actual,
-        extra=extra,
-    )
+    if output_mode == "kafka":
+        sent = publish_to_kafka(
+            df=df,
+            bootstrap_servers=kafka_bootstrap_servers,
+            topic=kafka_topic,
+            client_id=kafka_client_id,
+            sleep_ms=kafka_sleep_ms,
+        )
 
-    print(
-        f"[event-generator] rows={len(df):,} fraud_positive_rate={fraud_positive_rate_actual:.4f} -> {out_path}"
-    )
+        write_metadata(
+            output_dir=output_dir,
+            out_path=f"kafka://{kafka_bootstrap_servers}/{kafka_topic}",
+            seed=seed,
+            num_users=num_users,
+            num_merchants=num_merchants,
+            num_devices=num_devices,
+            num_transactions=num_transactions,
+            fraud_rate=fraud_rate,
+            start_date=start_date_str,
+            window_days=window_days,
+            fmt="kafka",
+            fraud_positive_rate_actual=fraud_positive_rate_actual,
+            extra=extra,
+        )
+
+        print(
+            f"[event-generator] published={sent:,} fraud_positive_rate={fraud_positive_rate_actual:.4f} topic={kafka_topic}"
+        )
+    else:
+        out_path = write_outputs(df, output_dir, output_basename, output_format)
+
+        write_metadata(
+            output_dir=output_dir,
+            out_path=out_path,
+            seed=seed,
+            num_users=num_users,
+            num_merchants=num_merchants,
+            num_devices=num_devices,
+            num_transactions=num_transactions,
+            fraud_rate=fraud_rate,
+            start_date=start_date_str,
+            window_days=window_days,
+            fmt=output_format,
+            fraud_positive_rate_actual=fraud_positive_rate_actual,
+            extra=extra,
+        )
+
+        print(
+            f"[event-generator] rows={len(df):,} fraud_positive_rate={fraud_positive_rate_actual:.4f} -> {out_path}"
+        )
 
 
 if __name__ == "__main__":
