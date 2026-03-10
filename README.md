@@ -16,6 +16,14 @@ Key capabilities demonstrated:
 - Dataset validation and monitoring
 - Automated retraining workflow
 
+## Example Fraud Network
+
+Transactions can be represented as a graph connecting users, devices, and merchants.
+
+Fraud rings often appear as clusters where multiple accounts share devices or merchants.
+
+![Fraud Network](docs/fraud_graph_example.png)
+
 ## Architecture
 ```
 Event Generator
@@ -88,6 +96,9 @@ Real-Time-Graph-Based-Fraud-Detection
 ├── data/
 │   ├── transactions.parquet
 │   └── metadata.json
+|
+├── docs/
+│   └── fraud_graph_example.png
 │
 ├── event-generator/
 |   ├── Dockerfile
@@ -160,7 +171,6 @@ Real-Time-Graph-Based-Fraud-Detection
 |   |
 │   └── prometheus/
 |       ├── prometheus.yml
-|       |
 |       └── data/
 |           ├── queries.active
 |           ├── chunks_head/
@@ -170,6 +180,8 @@ Real-Time-Graph-Based-Fraud-Detection
 |           
 |
 ├── notebooks/
+|    ├── requirements.txt
+|    ├── fraud_graph_visualization.py
 |    └── synthetic_data_generator.py
 |
 ├── prediction-monitor/
