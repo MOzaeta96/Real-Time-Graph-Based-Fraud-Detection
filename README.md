@@ -20,7 +20,7 @@ Key capabilities demonstrated:
 ```
 Event Generator
       ↓
-     Kafka
+    Kafka
       ↓
 Kafka Consumer
       ↓
