@@ -1,5 +1,8 @@
+joblib
+lightgbm
 networkx
 matplotlib
 pandas
 sqlalchemy
 scipy
+scikit-learn
