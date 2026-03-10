@@ -26,9 +26,17 @@ Fraud rings often appear as clusters where multiple accounts share devices or me
 
 ## Feature Importance
 
-The fraud model combines behavioral and graph-derived features. The chart below shows which signals contribute most to the model’s fraud predictions by showing how many times a feature was used to make decisions.
+The fraud detection model uses behavioral and graph-derived features.
 
-![Feature Importance](docs/feature_importance.png)
+### Split Importance
+Shows how frequently a feature was used in decision-making.
+
+![Split Importance](docs/feature_importance_split.png)
+
+### Gain Importance
+Shows how much predictive power each feature contributed.
+
+![Gain Importance](docs/feature_importance_gain.png)
 
 ## Architecture
 ```
@@ -104,6 +112,8 @@ Real-Time-Graph-Based-Fraud-Detection
 │   └── metadata.json
 |
 ├── docs/
+|   ├── feature_importance_split.png
+|   ├── feature_importance_gain.png
 │   └── fraud_graph_example.png
 │
 ├── event-generator/
