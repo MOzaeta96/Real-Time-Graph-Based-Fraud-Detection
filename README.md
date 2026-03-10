@@ -24,6 +24,12 @@ Fraud rings often appear as clusters where multiple accounts share devices or me
 
 ![Fraud Network](docs/fraud_graph_example.png)
 
+## Feature Importance
+
+The fraud model combines behavioral and graph-derived features. The chart below shows which signals contribute most to the model’s fraud predictions by showing how many times a feature was used to make decisions.
+
+![Feature Importance](docs/feature_importance.png)
+
 ## Architecture
 ```
 Event Generator
