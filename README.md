@@ -48,21 +48,55 @@ The precision-recall curve below is generated on the engineered daily feature ta
 
 ## Architecture
 ```
-Event Generator
-      ↓
-    Kafka
-      ↓
-Kafka Ingest Consumer
-      ↓
-PostgreSQL
-      ↓
-Feature Builder
-      ↓
-Redis Feature Store
-      ↓
-Inference API
-      ↓
-Monitoring / Retraining
+        +-----------------------+
+        | Synthetic Transactions |
+        |  Event Generator      |
+        +-----------+-----------+
+                    |
+                    v
+               +---------+
+               |  Kafka  |
+               | Event   |
+               | Stream  |
+               +----+----+
+                    |
+                    v
+        +--------------------------+
+        | kafka-ingest-consumer    |
+        | Parse + batch insert     |
+        +------------+-------------+
+                     |
+                     v
+            +------------------+
+            | PostgreSQL       |
+            | raw_transactions |
+            +------------------+
+                     |
+                     v
+            +------------------+
+            | feature-builder  |
+            | Graph Features   |
+            +------------------+
+                     |
+          +----------+-----------+
+          v                      v
++----------------+      +------------------+
+| Redis          |      | PostgreSQL       |
+| Online Feature |      | features table   |
+| Store          |      | (training data)  |
++-------+--------+      +---------+--------+
+        |                         |
+        v                         v
+ +--------------+         +----------------+
+ | FastAPI      |         | model-training |
+ | inference    |         | LightGBM       |
+ +------+-------+         +--------+-------+
+        |                           |
+        v                           v
+ +--------------+         +----------------+
+ | monitoring   |         | retrain        |
+ | prediction   |         | controller     |
+ +--------------+         +----------------+
 ```
 
 ## Data Pipeline Flow
