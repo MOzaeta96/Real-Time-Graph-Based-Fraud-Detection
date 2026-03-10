@@ -18,13 +18,28 @@ This repository demonstrates an end-to-end machine learning system for fraud det
 - Model drift monitoring
 - Automated retraining workflows
 
-## Example Fraud Network
+## Example Fraud Scenario
 
 Transactions can be represented as a graph connecting users, devices, and merchants.
 
 Fraud rings often appear as clusters where multiple accounts share devices or merchants.
 
-![Fraud Network](docs/fraud_graph_example.png)
+Example pattern:
+
+User A → Device X → Merchant Y  
+User B → Device X → Merchant Y  
+User C → Device X → Merchant Y  
+
+Even if each user appears normal individually, the graph structure reveals coordinated activity.
+
+Graph features such as those below allow the model to detect these patterns.:
+
+- `max_device_user_degree`
+- `avg_merchant_device_degree`
+
+The visualization below shows how users, devices, and merchants connect in a fraud cluster:
+
+![Fraud Graph](docs/fraud_graph_example.png)
 
 ## Feature Importance
 
