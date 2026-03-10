@@ -33,17 +33,23 @@ DEFAULT_FEATURES = [
     "txn_count",
     "total_amount",
     "avg_amount",
+    "max_amount",
+    "amount_spike_ratio",
     "distinct_merchants",
     "distinct_devices",
     "had_fraud_today",
 
-    # Graph features
+    # Graph structure features
     "user_device_degree",
     "user_merchant_degree",
     "avg_device_user_degree",
     "max_device_user_degree",
     "avg_merchant_device_degree",
     "max_merchant_device_degree",
+
+    # Graph fraud-pressure features
+    "avg_device_fraud_rate",
+    "max_device_fraud_rate",
 ]
 
 @dataclass(frozen=True)
@@ -198,19 +204,25 @@ def load_training_data(cfg: NextDayTrainConfig) -> pd.DataFrame:
       f.txn_count,
       f.total_amount,
       f.avg_amount,
+      COALESCE(f.max_amount, 0) AS max_amount,
+      COALESCE(f.amount_spike_ratio, 0) AS amount_spike_ratio,
       f.distinct_merchants,
       f.distinct_devices,
 
       -- derived from today's feature row (keeps consistency with publisher/inference)
       CASE WHEN f.fraud_txn_count > 0 THEN 1 ELSE 0 END AS had_fraud_today,
 
-      -- graph features (default to 0 if missing)
+      -- graph structure features
       COALESCE(f.user_device_degree, 0) AS user_device_degree,
       COALESCE(f.user_merchant_degree, 0) AS user_merchant_degree,
       COALESCE(f.avg_device_user_degree, 0) AS avg_device_user_degree,
       COALESCE(f.max_device_user_degree, 0) AS max_device_user_degree,
       COALESCE(f.avg_merchant_device_degree, 0) AS avg_merchant_device_degree,
       COALESCE(f.max_merchant_device_degree, 0) AS max_merchant_device_degree,
+
+      -- graph fraud-pressure features
+      COALESCE(f.avg_device_fraud_rate, 0) AS avg_device_fraud_rate,
+      COALESCE(f.max_device_fraud_rate, 0) AS max_device_fraud_rate,
 
       COALESCE(l.fraud_label, 0) AS label
     FROM features_user_daily f

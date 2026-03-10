@@ -2,6 +2,8 @@
   "txn_count",
   "total_amount",
   "avg_amount",
+  "max_amount",
+  "amount_spike_ratio",
   "distinct_merchants",
   "distinct_devices",
   "had_fraud_today",
@@ -10,5 +12,7 @@
   "avg_device_user_degree",
   "max_device_user_degree",
   "avg_merchant_device_degree",
-  "max_merchant_device_degree"
+  "max_merchant_device_degree",
+  "avg_device_fraud_rate",
+  "max_device_fraud_rate"
 ]
