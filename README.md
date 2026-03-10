@@ -1,7 +1,7 @@
 # Real-Time Graph-Based Fraud Detection
-This project aims to replicate a production-style fraud detection platform by simulating e-commerce transactions and processing them through a streaming-style ML system.
-The platform demonstrates how fraud detection models operate in a realistic production environment by combining event-driven ingestion, offline and online feature storage, model serving, monitoring, and automated retraining.
-This project focuses on overall system design for Machine Learning, and not just model training.
+This project aims to replicate a production-style fraud detection platform by simulating e-commerce transactions and processing them through a streaming-style ML system, with equal focus on Data Engineering, Machine Learning, and Data Science proficiencies. 
+
+The system demonstrates how fraud detection models operate in a realistic production environment by combining event-driven ingestion, offline and online feature storage, model serving, monitoring, and automated retraining.
 
 ## What This Project Demonstrates
 
