@@ -3,18 +3,20 @@ This project aims to replicate a production-style fraud detection platform by si
 The platform demonstrates how fraud detection models operate in a realistic production environment by combining event-driven ingestion, offline and online feature storage, model serving, monitoring, and automated retraining.
 This project focuses on overall system design for Machine Learning, and not just model training.
 
-## System Overview
-The system simulates transaction activity and processes events through a fraud detection pipeline.
-Key capabilities demonstrated:
-- Kafka event ingestion
-- PostgreSQL for an offline data warehouse
-- Redis for the online feature store
-- Graph-derived behavioral features
-- LightGBM for fraud classification
-- FastAPI for real-time inference service
-- Champion/Challenger model evaluation
-- Dataset validation and monitoring
-- Automated retraining workflow
+## What This Project Demonstrates
+
+This repository demonstrates an end-to-end machine learning system for fraud detection, including:
+
+- Event streaming with Kafka
+- Real-time feature pipelines
+- Graph-based fraud feature engineering
+- Online feature serving with Redis
+- Offline storage with PostgreSQL
+- LightGBM fraud classification
+- Precision–recall model evaluation
+- Feature importance visualization
+- Model drift monitoring
+- Automated retraining workflows
 
 ## Example Fraud Network
 
@@ -50,7 +52,7 @@ Event Generator
       ↓
     Kafka
       ↓
-Kafka Consumer
+Kafka Ingest Consumer
       ↓
 PostgreSQL
       ↓
@@ -88,14 +90,26 @@ Redis Online Features
 - Python
 - Docker Compose
 
-### Machine Learning:
-- LightGBM
-- Graph-derived feature engineering
-- Fraud classification
-- Model Operations:
-- FastAPI inference service
-- Champion/Challenger evaluation
-- Automated retraining pipeline
+## Machine Learning
+
+LightGBM is used for fraud classification using behavioral and graph-derived features.
+
+Key model characteristics:
+
+- Handles extreme class imbalance using `scale_pos_weight`
+- Optimized for recall to minimize missed fraud
+- Feature importance analysis using both split and gain metrics
+- Precision–recall evaluation for imbalanced classification problems
+
+
+## Model Operations
+
+The platform includes automated model lifecycle management:
+
+- Champion/challenger model evaluation
+- Drift detection using baseline feature histograms
+- Automatic retraining triggers
+- Model registry stored in PostgreSQL
 
 ### Monitoring:
 - Dataset validation checks
@@ -108,10 +122,10 @@ Real-Time-Graph-Based-Fraud-Detection
 ├── compose.yaml
 │
 ├── common_fraud/
-|   ├── __init___.py
-|   └── training/
-|       ├── __init___.py
-│       └── lgbm_nextday_trainer.py
+|   ├── training/
+|   |   ├── __init__.py
+│   |   └── lgbm_nextday_trainer.py
+|   └── __init___.py
 |
 ├── data/
 │   ├── transactions.parquet
