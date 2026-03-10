@@ -38,6 +38,12 @@ Shows how much predictive power each feature contributed.
 
 ![Gain Importance](docs/feature_importance_gain.png)
 
+## Precision-Recall Curve
+
+The precision-recall curve below is generated on the engineered daily feature table to visualize score separation under class imbalance. Because fraud detection is a highly imbalanced classification problem, precision–recall is used to assess model performance, rather than accuracy or ROC.
+
+![Precision-Recall Curve](docs/precision_recall_curve.png)
+
 ## Architecture
 ```
 Event Generator
