@@ -36,6 +36,23 @@ Monitoring / Retraining
 ```
 The architecture separates data ingestion, feature generation, model training, and inference, mirroring real production ML systems.
 
+## Data Pipeline Flow
+```
+Synthetic Transactions
+        ↓
+Kafka Topic (transactions.raw)
+        ↓
+Consumer Batch Inserts
+        ↓
+raw_transactions table
+        ↓
+Feature Engineering
+        ↓
+Feature Tables
+        ↓
+Redis Online Features
+```
+
 ## Tech Stack
 ### Data Engineering:
 - Kafka
