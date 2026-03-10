@@ -34,7 +34,6 @@ Inference API
       ↓
 Monitoring / Retraining
 ```
-The architecture separates data ingestion, feature generation, model training, and inference, mirroring real production ML systems.
 
 ## Data Pipeline Flow
 ```
