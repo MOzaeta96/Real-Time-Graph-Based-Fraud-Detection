@@ -332,10 +332,18 @@ The API returns a fraud probability and model metadata.
 ## Current Limitations
 This project focuses on demonstrating the architecture of a fraud detection platform.
 Some components are simplified:
-- Feature computation is batch-based rather than fully streaming
-- Graph features are aggregate metrics rather than learned embeddings
-- Model registry integration is not yet implemented
-- Synthetic data is used instead of real financial data
+- The synthetic data generator produces realistic but simulated fraud patterns rather than true production behavior.
+- Feature engineering is batch-oriented at the daily user level, rather than fully streaming per-event feature aggregation.
+- The precision–recall visualization is generated from the engineered feature table for interpretability, not as a formal held-out offline benchmark artifact.
+- PostgreSQL is used as a lightweight model registry for simplicity instead of a dedicated registry service such as MLflow.
+
+## Production Risks to Address
+
+- **Data leakage controls:** features such as same-day fraud indicators can be useful for experimentation, but must be carefully audited to avoid label leakage in true real-time scoring.
+- **Feature freshness:** online Redis features and offline PostgreSQL features should be validated for consistency and staleness.
+- **Schema evolution:** Kafka message contracts should be versioned to prevent breaking downstream consumers.
+- **Model degradation:** prediction drift and feature distribution drift should be continuously monitored and tied to retraining policies.
+- **Class imbalance:** fraud prevalence is extremely low, so threshold tuning and alert-volume controls are critical for operational usefulness.
 
 ## Future Improvements
 Planned extensions:
