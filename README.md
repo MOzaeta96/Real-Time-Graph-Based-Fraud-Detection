@@ -29,6 +29,7 @@ This repository demonstrates an end-to-end machine learning system for fraud det
 - Production-style containerized orchestration with Docker Compose
   
 The end-to-end process:
+
 **data ingestion → feature engineering → model training → online feature serving → inference → monitoring → retraining**
 
 It is intentionally designed to reflect the tradeoffs and system boundaries encountered in real fraud detection and MLOps environments.
