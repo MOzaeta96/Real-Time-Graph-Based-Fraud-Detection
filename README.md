@@ -27,20 +27,15 @@ This repository demonstrates an end-to-end machine learning system for fraud det
 - Prediction and drift monitoring
 - Automated retraining workflows with challenger artifacts
 - Production-style containerized orchestration with Docker Compose
-
-## Why This Project Matters
-
-This project demonstrates the full lifecycle of a production-style ML system:
-
+  
+The end-to-end process:
 **data ingestion → feature engineering → model training → online feature serving → inference → monitoring → retraining**
 
-It is intentionally designed to reflect the kinds of tradeoffs and system boundaries encountered in real fraud detection and MLOps environments.
+It is intentionally designed to reflect the tradeoffs and system boundaries encountered in real fraud detection and MLOps environments.
 
 ## Example Fraud Scenario
 
-Transactions can be represented as a graph connecting **users**, **devices**, and **merchants**.
-
-Fraud rings often appear as clusters where multiple accounts share devices or merchants.
+Transactions can be represented as a graph connecting **users**, **devices**, and **merchants**, as fraud rings often appear as clusters in which multiple accounts share devices or merchants.
 
 Example pattern:
 
@@ -48,9 +43,7 @@ Example pattern:
 - User B → Device X → Merchant Y  
 - User C → Device X → Merchant Y  
 
-Even if each user appears normal individually, the graph structure can reveal coordinated activity.
-
-Graph features such as the following allow the model to detect these patterns:
+Even if each user appears normal individually, the graph structure, such as the following, can show coordinated activity that the model can use to detect these patterns:
 
 - `max_device_user_degree`
 - `avg_merchant_device_degree`
