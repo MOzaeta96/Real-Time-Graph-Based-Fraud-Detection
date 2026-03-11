@@ -770,6 +770,33 @@ Generated outputs:
 - `docs/feature_importance_gain.png`
 - `docs/precision_recall_curve.png`
 
+## Model Training & Promotion Strategy
+
+This repository separates model development from model serving.
+
+### Training / Offline Evaluation
+- Train LightGBM models on historical fraud data
+- Evaluate offline metrics (AUC, PR AUC, F1, threshold selection)
+- Persist artifacts:
+  - `model.joblib`
+  - `feature_list.json`
+  - `metrics.json`
+
+### Champion / Challenger Serving
+- Champion serves the majority of production traffic
+- Challenger receives either:
+  - direct routed traffic (in `auto` mode)
+  - or shadow-only comparisons
+
+### Promotion Guardrails
+The API includes a lightweight promotion framework:
+
+- `/shadow/summary` → recent challenger comparison stats
+- `/shadow/gate` → promotion safety checks
+- `/shadow/promote` → recommendation to `HOLD` or `RAMP`
+
+This mirrors a real production model governance workflow.
+
 ## Current Limitations
 This project is intentionally designed as a production-style demonstration, but several components are simplified relative to a fully hardened deployment:
 - The synthetic data generator produces realistic but simulated fraud patterns rather than true production behavior.
