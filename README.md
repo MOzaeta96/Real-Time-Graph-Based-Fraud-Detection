@@ -391,6 +391,8 @@ Real-Time-Graph-Based-Fraud-Detection
 │   └── precision_recall_visualization.py
 │
 ├── prediction-monitor/
+│   ├── Dockerfile
+│   ├── requirements.txt
 │   └── prediction_monitor.py
 │
 └── retrain-controller/
@@ -429,6 +431,7 @@ This step creates / refreshes:
 > Note: the current feature-building implementation is a full-batch rebuild for clarity and reproducibility, rather than an incremental streaming aggregation job.
 ### Train the baseline model
 ```
+docker compose up feature-builder
 docker compose up model-training
 ```
 This writes baseline artifacts to:
@@ -453,23 +456,306 @@ docker compose up -d drift-detector prometheus grafana prediction-monitor
 docker compose up -d retrain-controller
 ```
 ## Example API Request
-### Endpoint
+### Inference Service & API
+The project includes a FastAPI-based real-time inference service that serves fraud risk scores using online features stored in Redis. The API supports:
+- Real-time scoring for users and transaction events
+- Champion/challenger routing for controlled model rollout
+- Shadow evaluation to compare production vs. candidate models safely
+- Threshold-based decision policies (f1, recall95, precision20)
+- Prometheus metrics for observability
+- Redis Streams telemetry for live prediction monitoring
+
+**Default local endpoint:** http://localhost:8000
+
+### Inference Service Overview
+
+- **Framework:** FastAPI
+- **Port:** `8000`
+- **Online feature store:** Redis
+- **Model artifacts:** Mounted under `/models/{champion|challenger}`
+- **Supported models:** Champion + Challenger (LightGBM)
+- **Routing modes:** `champion`, `challenger`, or `auto`
+- **Observability:** Prometheus metrics at `/metrics`
+- **Monitoring stream:** Redis Stream (`fraud_predictions`) for live prediction telemetry
+
+## API Endpoints
+`GET /health`
+
+Returns service health, Redis connectivity, routing mode, shadow evaluation status, and champion/challenger model load status.
+### Example request
 ```
-POST /score
+curl http://localhost:8000/health
 ```
-### Example request body
+### Example response
 ```
 {
-  "user_id": "u_123",
-  "amount": 45.20,
-  "country": "US"
+  "status": "ok",
+  "redis_ok": true,
+  "ts": "2026-03-11T17:35:23.633962+00:00",
+  "model_version": "lgbm_nextday_v2",
+  "active_model_mode": "auto",
+  "champion_pct": 90,
+  "shadow_eval": true,
+  "champion_loaded": true,
+  "challenger_loaded": true,
+  "champion_model_version": "lgbm_nextday_v2",
+  "challenger_model_version": "lgbm_nextday_20260306_205512"
 }
 ```
-The API returns:
-- fraud probability
-- model version metadata
-- model routing information (depending on configuration)
-> Depending on deployment mode, the inference service may also support health and metrics endpoints for operational monitoring.
+Useful for deployment validation, smoke testing, and verifying that both models are loaded correctly.
+
+---
+
+`POST /score`
+
+Scores a user using the latest online features stored in Redis.
+
+Supports threshold-based policies via the optional `policy` query parameter:
+- `f1 (default)`
+- `recall95`
+- `precision20`
+
+### Example request
+```
+curl -X POST "http://localhost:8000/score?policy=f1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "u_4459",
+    "amount": 120.5,
+    "country": "US"
+  }'
+```
+
+### Example response
+```
+audit_id             : 3eea8b9c-a7a8-4a24-9847-8d37b8cc75e1
+user_id              : u_4459
+fraud_probability    : 0.0
+feature_date         :
+model_probability    : 0.0
+model_version        : lgbm_nextday_v2
+policy_used          : f1
+threshold_used       : 0.027950120666586968
+fraud_decision       : 0
+latency_ms           : 31.63
+active_model         : champion
+bucket               : 35
+top_feature_contribs : {@{feature=avg_device_user_degree; contribution=-2.06686513338186}, @{feature=avg_device_fraud_rate; contribution=-1.5470011182990189}, @{feature=max_amount;
+                       contribution=-1.0290010304887227}}
+bias                 : -10.355717281230477
+shadow_eval          : True
+shadow               : @{model=challenger; model_version=lgbm_nextday_20260306_205512; fraud_probability=0.002665; model_probability=0.002665; threshold_used=0.5858109170347332; fraud_decision=0}
+```
+This is the core online inference endpoint for real-time fraud scoring using precomputed online features.
+
+---
+
+`POST /score/transaction`
+
+Scores a transaction event while still leveraging the user’s online Redis features. This is the more production-realistic endpoint for event-driven fraud scoring.
+
+Supports the same optional policy query parameter:
+
+- `f1 (default)`
+- `recall95`
+- `precision20 `
+### Example request
+```
+curl -X POST "http://localhost:8000/score/transaction?policy=f1" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "transaction_id": "tx_001",
+    "user_id": "u_4459",
+    "amount": 120.5,
+    "country": "US"
+  }'
+```
+### Required fields
+- `transaction_id`
+- `user_id`
+- `amount`
+- `country`
+
+### Optional fields
+- `timestamp`
+- `merchant_id`
+- `device_id`
+
+This endpoint more closely mirrors a real payment/fraud decisioning flow, where the service scores incoming transaction events in real time.
+
+---
+
+` GET /model`
+
+Returns detailed metadata for both champion and challenger models, including:
+
+- loaded status
+- feature count
+- full feature list
+- threshold configuration
+- artifact paths
+- model version
+
+### Example request
+```
+curl http://localhost:8000/model
+```
+
+Useful for debugging model artifacts, verifying feature alignment, and confirming threshold metadata.
+
+---
+
+`GET /model/status`
+
+Returns a lighter-weight operational status view of both models.
+
+Includes:
+
+- loaded status
+- model version
+- feature count
+- default threshold
+- policy thresholds
+
+### Example request
+```
+curl http://localhost:8000/model/status
+```
+
+This is the cleaner operational endpoint for dashboards or quick service validation.
+
+---
+
+`GET /routing`
+
+Returns the current champion/challenger routing configuration stored in Redis.
+
+### Example request
+```
+curl http://localhost:8000/routing
+```
+
+### Example response
+```
+{
+  "active_model_mode": "auto",
+  "champion_pct": 90
+}
+```
+Makes model traffic routing transparent and easy to inspect during experiments or rollouts.
+
+---
+
+`POST /routing`
+
+Updates the routing configuration without restarting the service.
+
+**Supported modes**
+- `champion`
+- `challenger`
+- `auto`
+
+When using auto, traffic is split deterministically by the user hash bucket.
+
+### Example request
+```
+curl -X POST http://localhost:8000/routing \
+  -H "Content-Type: application/json" \
+  -d '{
+    "active_model_mode": "auto",
+    "champion_pct": 80
+  }'
+```
+
+Supports controlled traffic ramping and the safe rollout of challengers.
+
+---
+
+`POST /reload-models`
+
+Reloads champion and challenger model artifacts from disk without restarting the API container.
+
+### Example request
+```
+curl -X POST http://localhost:8000/reload-models
+```
+
+Enables lightweight artifact refreshes after new models are promoted or replaced.
+
+---
+
+`GET /shadow/summary`
+
+Summarizes the most recent shadow evaluation events from the Redis Stream.
+
+### Example request
+```
+curl "http://localhost:8000/shadow/summary?n=200"
+```
+**What it includes**
+- production vs. shadow model counts
+- decision mismatch rate
+- score delta statistics
+- shadow latency statistics
+
+Provides a concise operational summary of how the challenger behaves compared with the production model.
+
+---
+
+`GET /shadow/gate`
+
+Evaluates whether the challenger passes promotion guardrails based on recent shadow events.
+
+**Guardrails include**
+- decision mismatch rate
+- p99 shadow latency
+- p99 score drift
+
+### Example request
+```
+curl "http://localhost:8000/shadow/gate?n=200"
+```
+
+Implements a simple but realistic promotion gate before shifting more traffic to the challenger.
+
+---
+
+`POST /shadow/promote`
+
+Returns a recommendation to:
+- `HOLD`
+- `RAMP`
+based on the shadow gate results and minimum event thresholds.
+
+### Example request
+```
+curl -X POST "http://localhost:8000/shadow/promote?n=2000&step=20&min_events=200"
+```
+
+Simulates a production-safe promotion workflow for gradually increasing challenger traffic.
+
+---
+
+`GET /metrics`
+
+Exposes Prometheus metrics for the inference service.
+
+### Example request
+```
+curl http://localhost:8000/metrics
+```
+**Metrics include**
+- request counts
+- request latency histograms
+- fraud decision counts
+- shadow prediction counts
+- shadow latency histograms
+- prediction score distributions
+- model reload counters
+
+This endpoint powers Prometheus/Grafana observability for the online inference service.
+
+---
 
 ## Reproducing Visualizations
 After feature generation and model training, the visualization scripts can be run locally from the repo root.
