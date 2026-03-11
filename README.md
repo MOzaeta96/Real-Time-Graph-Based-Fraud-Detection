@@ -94,9 +94,9 @@ Fraud often involves **shared infrastructure** across accounts. To capture this,
 
 Example edge types:
 
-- `user ↔ device`
-- `user ↔ merchant`
-- `device ↔ merchant`
+- `user <-> device`
+- `user <-> merchant`
+- `device <-> merchant`
 
 Derived features include:
 
@@ -118,7 +118,7 @@ The feature table also supports additional engineered features for future model 
 - `avg_device_fraud_rate`
 - `max_device_fraud_rate`
 
-These are currently included in the feature-building pipeline but may not yet be enabled in the baseline model configuration.
+These are currently included in the feature-building pipeline and are enabled in the baseline model configuration, but are not used as core focus features in the current iteration, instead helping to derive other features.
 
 ## Label Definition
 
