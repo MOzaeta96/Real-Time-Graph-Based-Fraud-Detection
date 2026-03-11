@@ -151,7 +151,7 @@ Shows how much predictive power each feature contributed.
 
 The precision–recall curve below is generated on the engineered daily feature table to visualize score separation under class imbalance.
 
-Because fraud detection is a highly imbalanced classification problem, precision–recall is emphasized over accuracy and is often more useful than ROC alone when evaluating operational usefulness.
+Precision–recall is emphasized over accuracy and is often more useful than ROC alone when evaluating operational usefulness, because fraud detection is a highly imbalanced classification problem.
 
 ![Precision-Recall Curve](docs/precision_recall_curve.png)
 
@@ -268,7 +268,7 @@ Monitoring + Retraining
 - Prediction monitoring
 
 ## Machine Learning
-LightGBM is used for fraud classification using behavioral and graph-derived features.
+LightGBM is used for fraud classification using the behavioral and graph-derived features discussed earlier.
 
 Key model characteristics:
 - Handles extreme class imbalance using `scale_pos_weight`
